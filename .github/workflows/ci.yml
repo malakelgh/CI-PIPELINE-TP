@@ -1,5 +1,5 @@
 
-name: CI Pipeline
+name: CI Pipeline Multi-Jobs
 
 on:
   push:
@@ -9,26 +9,62 @@ on:
   workflow_dispatch:
 
 jobs:
-  ci:
+
+  lint:
+    name: Vérification du code
     runs-on: ubuntu-latest
 
     steps:
-      - name: Recuperer le code
+      - name: Récupérer le code
         uses: actions/checkout@v4
 
-      - name: Installer Python 3.11
+      - name: Installer Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Installer les dependances
+      - name: Installer les dépendances
         run: pip install -r requirements.txt
 
-      - name: Lint du code
-        run: |
-          flake8 app --count --select=E9,F63,F7,F82,F841 --show-source --statistics
-          flake8 app --count --max-complexity=10 --max-line-length=127 --statistics
-          flake8 tests --count --max-line-length=127 --statistics
+      - name: Vérifier le code avec Flake8
+        run: python -m flake8 app tests --max-line-length=127
 
-      - name: Lancer les tests
-        run: python -m pytest -v --cov=app
+  tests:
+    name: Exécution des tests
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
+
+      - name: Exécuter les tests Pytest
+        run: python -m pytest -v
+
+  coverage:
+    name: Couverture des tests
+    runs-on: ubuntu-latest
+    needs: tests
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
+
+      - name: Calculer la couverture
+        run: python -m pytest --cov=app --cov-report=term-missing
